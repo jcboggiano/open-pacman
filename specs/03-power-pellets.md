@@ -1,6 +1,6 @@
 # SPEC 03 — Power pellets y modo asustado
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Depends on:** SPEC 01, SPEC 02
 > **Date:** 2026-11-15
 > **Objective:** Añadir cuatro power pellets que, al comerse, activan 360 frames de modo asustado en el que los fantasmas huyen a media velocidad y pueden comerse por puntos escalados.
