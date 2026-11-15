@@ -160,6 +160,16 @@ function decideGhost( game, g ) {
   const px = Math.round( p.x );
   const py = Math.round( p.y );
 
+  // Salida de la pen: subir en linea recta hasta el pasillo de la fila 11.
+  if ( g.leaving ) {
+    if ( g.y === PEN_EXIT_ROW ) {
+      g.leaving = false;
+    } else {
+      g.dir = 'up';
+      return;
+    }
+  }
+
   // El cazador puede invertir siempre; el resto solo en callejon sin salida.
   let choices = Object.keys( DIRS ).filter(
     ( dir ) => dir !== OPPOSITE[ g.dir ] && canMove( grid, g.x, g.y, dir, 'ghost' )
