@@ -53,6 +53,7 @@ function createGame() {
       kind: g.kind,
       corner: { x: g.corner.x, y: g.corner.y },
       patrolIndex: 0,
+      leaving: !!g.inPen,
     } ) ),
     mode: 'scatter',
     modeFrames: 0,
@@ -64,14 +65,15 @@ function aligned( v ) {
 }
 
 // Una celda es muro para el actor dado?
-//   pacman: bloqueado por pared (1) y puerta (3)
-//   ghost:  bloqueado solo por pared (1)
+//   pacman:        bloqueado por pared (1) y puerta (3)
+//   ghost:         bloqueado por pared (1) y puerta (3)
+//   ghost-leaving: bloqueado solo por pared (1); la puerta es transitable
 function isWall( grid, x, y, actor ) {
   if ( y < 0 || y >= grid.length ) return true;
   if ( x < 0 || x >= grid[ 0 ].length ) return true;
   const v = grid[ y ][ x ];
   if ( v === 1 ) return true;
-  if ( v === 3 && actor === 'pacman' ) return true;
+  if ( v === 3 && actor !== 'ghost-leaving' ) return true;
   return false;
 }
 
@@ -159,6 +161,16 @@ function decideGhost( game, g ) {
   const px = Math.round( p.x );
   const py = Math.round( p.y );
 
+  // Salida de la pen: subir en linea recta hasta el pasillo de la fila 11.
+  if ( g.leaving ) {
+    if ( g.y === PEN_EXIT_ROW ) {
+      g.leaving = false;
+    } else {
+      g.dir = 'up';
+      return;
+    }
+  }
+
   // El cazador puede invertir siempre; el resto solo en callejon sin salida.
   let choices = Object.keys( DIRS ).filter(
     ( dir ) => dir !== OPPOSITE[ g.dir ] && canMove( grid, g.x, g.y, dir, 'ghost' )
@@ -205,7 +217,8 @@ function moveGhost( game, g ) {
     g.x = Math.round( g.x );
     g.y = Math.round( g.y );
     decideGhost( game, g );
-    if ( !canMove( grid, g.x, g.y, g.dir, 'ghost' ) ) return;
+    const actor = g.leaving ? 'ghost-leaving' : 'ghost';
+    if ( !canMove( grid, g.x, g.y, g.dir, actor ) ) return;
   }
 
   const d = DIRS[ g.dir ];
@@ -224,6 +237,7 @@ function resetPositions( game ) {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
     g.dir = 'up';
+    g.leaving = !!GHOST_STARTS[ i ].inPen;
   } );
 }
 
