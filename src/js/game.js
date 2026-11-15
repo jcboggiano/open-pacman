@@ -22,6 +22,8 @@ const HUNTER_SPEED = 0.125;  // 1/8 celda/frame, igual que Pac-Man
 const SCATTER_FRAMES = 420;
 const CHASE_FRAMES = 1200;
 const POWER_PELLET_POINTS = 50;
+const FRIGHTENED_FRAMES = 360;
+const FRIGHTENED_SPEED = 0.05;  // 1/20 celda/frame, alineado con la rejilla
 
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
@@ -55,9 +57,13 @@ function createGame() {
       corner: { x: g.corner.x, y: g.corner.y },
       patrolIndex: 0,
       leaving: !!g.inPen,
+      frightened: false,
+      respawnFrames: 0,
     } ) ),
     mode: 'scatter',
     modeFrames: 0,
+    frightenedFrames: 0,
+    frightenedEaten: 0,
   };
 }
 
@@ -121,6 +127,7 @@ function movePacman( game ) {
       grid[ p.y ][ p.x ] = 0;
       game.score += POWER_PELLET_POINTS;
       game.dotsRemaining--;
+      startFrightened( game );
     }
     // Si no puede seguir, se detiene en la celda.
     if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
@@ -189,6 +196,12 @@ function decideGhost( game, g ) {
   }
   if ( choices.length === 0 ) choices = [ OPPOSITE[ g.dir ] ];
 
+  // Asustado: huir de Pac-Man en lugar de perseguir o patrullar.
+  if ( g.frightened ) {
+    g.dir = chooseAway( choices, g.x, g.y, { x: px, y: py } );
+    return;
+  }
+
   if ( game.mode === 'scatter' ) {
     g.dir = chooseToward( choices, g.x, g.y, g.corner );
     return;
@@ -229,8 +242,9 @@ function moveGhost( game, g ) {
   }
 
   const d = DIRS[ g.dir ];
-  g.x += d.x * g.speed;
-  g.y += d.y * g.speed;
+  const speed = g.frightened ? FRIGHTENED_SPEED : g.speed;
+  g.x += d.x * speed;
+  g.y += d.y * speed;
   wrapTunnel( g, width );
 }
 
@@ -263,8 +277,31 @@ function advanceMode( game ) {
   }
 }
 
+// Activa o reinicia el modo asustado: 360 frames y escala de puntos a cero.
+// Los fantasmas comidos (invisibles) no participan; el resto se vuelve asustado
+// y los que no estan saliendo de la pen invierten su direccion.
+function startFrightened( game ) {
+  game.frightenedFrames = FRIGHTENED_FRAMES;
+  game.frightenedEaten = 0;
+  for ( const g of game.ghosts ) {
+    if ( g.respawnFrames > 0 ) continue;
+    g.frightened = true;
+    if ( !g.leaving ) g.dir = OPPOSITE[ g.dir ];
+  }
+}
+
+// Descuenta un frame del efecto y lo apaga al agotarse.
+function advanceFrightened( game ) {
+  if ( game.frightenedFrames <= 0 ) return;
+  game.frightenedFrames--;
+  if ( game.frightenedFrames <= 0 ) {
+    for ( const g of game.ghosts ) g.frightened = false;
+  }
+}
+
 function update( game ) {
   advanceMode( game );
+  advanceFrightened( game );
   movePacman( game );
   game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
 
