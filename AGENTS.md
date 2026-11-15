@@ -1,4 +1,4 @@
-# AGENTS.md
+# AGENTS.md!!!
 
 Vanilla JS Pac-Man clone. No build system, no dependencies, no test suite. `README.md`, code comments, and UI strings are in Spanish.
 
