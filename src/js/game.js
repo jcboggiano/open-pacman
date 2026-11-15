@@ -255,12 +255,16 @@ function moveGhost( game, g ) {
 }
 
 function resetPositions( game ) {
+  game.frightenedFrames = 0;
+  game.frightenedEaten = 0;
   const p = game.pacman;
   p.x = PACMAN_START.x;
   p.y = PACMAN_START.y;
   p.dir = 'left';
   p.nextDir = null;
   game.ghosts.forEach( ( g, i ) => {
+    g.frightened = false;
+    g.respawnFrames = 0;
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
     g.dir = 'up';
