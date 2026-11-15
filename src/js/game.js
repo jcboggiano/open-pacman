@@ -25,6 +25,9 @@ const POWER_PELLET_POINTS = 50;
 const FRIGHTENED_FRAMES = 360;
 const FRIGHTENED_SPEED = 0.05;  // 1/20 celda/frame, alineado con la rejilla
 const FRIGHTENED_FLASH_FRAMES = 120;
+const GHOST_RESPAWN_FRAMES = 60;
+const FRIGHTENED_BASE_POINTS = 200;  // 200 * 2^n
+const PEN_RESPAWN_X = [ 13, 14 ];    // indice par / impar
 
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
@@ -234,6 +237,8 @@ function moveGhost( game, g ) {
   const grid = game.grid;
   const width = grid[ 0 ].length;
 
+  if ( g.respawnFrames > 0 ) return; // comido: invisible, no colisiona, no se mueve
+
   if ( aligned( g.x ) && aligned( g.y ) ) {
     g.x = Math.round( g.x );
     g.y = Math.round( g.y );
@@ -306,16 +311,40 @@ function update( game ) {
   movePacman( game );
   game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
 
-  for ( const g of game.ghosts ) {
-    if ( collides( game.pacman, g ) ) {
-      game.lives--;
-      if ( game.lives <= 0 ) {
-        game.state = 'lost';
-        return;
-      }
-      resetPositions( game );
-      break;
+  // Cuenta atras de los fantasmas comidos y reaparicion en la pen.
+  game.ghosts.forEach( ( g, i ) => {
+    if ( g.respawnFrames <= 0 ) return;
+    g.respawnFrames--;
+    if ( g.respawnFrames <= 0 ) {
+      g.x = PEN_RESPAWN_X[ i % 2 ];
+      g.y = 14;
+      g.dir = 'up';
+      g.leaving = true;
+      g.frightened = false;
     }
+  } );
+
+  for ( const g of game.ghosts ) {
+    if ( g.respawnFrames > 0 ) continue; // invisible: no colisiona
+    if ( !collides( game.pacman, g ) ) continue;
+
+    // Fantasma asustado: se come con puntos escalados dentro del efecto.
+    if ( g.frightened ) {
+      game.score += FRIGHTENED_BASE_POINTS * Math.pow( 2, game.frightenedEaten );
+      game.frightenedEaten++;
+      g.frightened = false;
+      g.respawnFrames = GHOST_RESPAWN_FRAMES;
+      continue;
+    }
+
+    // Fantasma normal: perder vida.
+    game.lives--;
+    if ( game.lives <= 0 ) {
+      game.state = 'lost';
+      return;
+    }
+    resetPositions( game );
+    break;
   }
 
   if ( game.dotsRemaining <= 0 ) game.state = 'won';
