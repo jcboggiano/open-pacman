@@ -1,6 +1,6 @@
 // game.js
 // Estado y reglas. Depende de globals de maze.js: MAZE, TUNNEL_ROW,
-// PACMAN_START, GHOST_STARTS.
+// PACMAN_START, GHOST_STARTS, PATROL_RECT.
 
 const DIRS = {
   left: { x: -1, y: 0 },
@@ -9,9 +9,18 @@ const DIRS = {
   down: { x: 0, y: 1 },
 };
 const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
+const PATROL_CORNERS = [
+  { x: PATROL_RECT.x1, y: PATROL_RECT.y1 },
+  { x: PATROL_RECT.x2, y: PATROL_RECT.y1 },
+  { x: PATROL_RECT.x2, y: PATROL_RECT.y2 },
+  { x: PATROL_RECT.x1, y: PATROL_RECT.y2 },
+];
 
-const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
-const GHOST_SPEED = 0.1;    // 1/10 celda/frame
+const PACMAN_SPEED = 0.125;  // 1/8 celda/frame -> alinea cada 8 frames
+const GHOST_SPEED = 0.1;     // 1/10 celda/frame
+const HUNTER_SPEED = 0.125;  // 1/8 celda/frame, igual que Pac-Man
+const SCATTER_FRAMES = 420;
+const CHASE_FRAMES = 1200;
 
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
@@ -40,9 +49,13 @@ function createGame() {
       x: g.x,
       y: g.y,
       dir: 'up',
-      speed: GHOST_SPEED,
+      speed: g.kind === 'hunter' ? HUNTER_SPEED : GHOST_SPEED,
       kind: g.kind,
+      corner: { x: g.corner.x, y: g.corner.y },
+      patrolIndex: 0,
     } ) ),
+    mode: 'scatter',
+    modeFrames: 0,
   };
 }
 
@@ -110,32 +123,75 @@ function movePacman( game ) {
   wrapTunnel( p, width );
 }
 
+// Elige la direccion cuyo vecino queda mas cerca de target (Manhattan).
+function chooseToward( choices, x, y, target ) {
+  let best = choices[ 0 ];
+  let bestDist = Infinity;
+  for ( const dir of choices ) {
+    const d = DIRS[ dir ];
+    const dist = Math.abs( x + d.x - target.x ) + Math.abs( y + d.y - target.y );
+    if ( dist < bestDist ) {
+      bestDist = dist;
+      best = dir;
+    }
+  }
+  return best;
+}
+
+// Elige la direccion cuyo vecino queda mas lejos de target (Manhattan).
+function chooseAway( choices, x, y, target ) {
+  let best = choices[ 0 ];
+  let bestDist = -Infinity;
+  for ( const dir of choices ) {
+    const d = DIRS[ dir ];
+    const dist = Math.abs( x + d.x - target.x ) + Math.abs( y + d.y - target.y );
+    if ( dist > bestDist ) {
+      bestDist = dist;
+      best = dir;
+    }
+  }
+  return best;
+}
+
 function decideGhost( game, g ) {
   const grid = game.grid;
   const p = game.pacman;
+  const px = Math.round( p.x );
+  const py = Math.round( p.y );
 
-  const options = Object.keys( DIRS ).filter(
+  // El cazador puede invertir siempre; el resto solo en callejon sin salida.
+  let choices = Object.keys( DIRS ).filter(
     ( dir ) => dir !== OPPOSITE[ g.dir ] && canMove( grid, g.x, g.y, dir, 'ghost' )
   );
-  // Sin salida (callejon): permitir el giro de 180.
-  const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
+  if ( g.kind === 'hunter' || choices.length === 0 ) {
+    choices = Object.keys( DIRS ).filter(
+      ( dir ) => canMove( grid, g.x, g.y, dir, 'ghost' )
+    );
+  }
+  if ( choices.length === 0 ) choices = [ OPPOSITE[ g.dir ] ];
 
+  if ( game.mode === 'scatter' ) {
+    g.dir = chooseToward( choices, g.x, g.y, g.corner );
+    return;
+  }
+
+  // Persecucion: comportamiento distinto por rol.
   if ( g.kind === 'hunter' ) {
-    const px = Math.round( p.x );
-    const py = Math.round( p.y );
-    let best = choices[ 0 ];
-    let bestDist = Infinity;
-    for ( const dir of choices ) {
-      const d = DIRS[ dir ];
-      const nx = g.x + d.x;
-      const ny = g.y + d.y;
-      const dist = Math.abs( nx - px ) + Math.abs( ny - py );
-      if ( dist < bestDist ) {
-        bestDist = dist;
-        best = dir;
-      }
+    g.dir = chooseToward( choices, g.x, g.y, { x: px, y: py } );
+  } else if ( g.kind === 'patrol' ) {
+    let target = PATROL_CORNERS[ g.patrolIndex ];
+    if ( g.x === target.x && g.y === target.y ) {
+      g.patrolIndex = ( g.patrolIndex + 1 ) % PATROL_CORNERS.length;
+      target = PATROL_CORNERS[ g.patrolIndex ];
     }
-    g.dir = best;
+    g.dir = chooseToward( choices, g.x, g.y, target );
+  } else if ( g.kind === 'coward' ) {
+    const dist = Math.abs( g.x - px ) + Math.abs( g.y - py );
+    if ( dist < 4 ) {
+      g.dir = chooseAway( choices, g.x, g.y, { x: px, y: py } );
+    } else {
+      g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
+    }
   } else {
     g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
   }
@@ -175,7 +231,19 @@ function collides( a, b ) {
   return Math.abs( a.x - b.x ) < 0.5 && Math.abs( a.y - b.y ) < 0.5;
 }
 
+function advanceMode( game ) {
+  game.modeFrames++;
+  if ( game.mode === 'scatter' && game.modeFrames >= SCATTER_FRAMES ) {
+    game.mode = 'chase';
+    game.modeFrames = 0;
+  } else if ( game.mode === 'chase' && game.modeFrames >= CHASE_FRAMES ) {
+    game.mode = 'scatter';
+    game.modeFrames = 0;
+  }
+}
+
 function update( game ) {
+  advanceMode( game );
   movePacman( game );
   game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
 

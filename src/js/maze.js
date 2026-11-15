@@ -52,11 +52,15 @@ const MAZE = MAZE_STR.map( ( row ) => row.split( '' ).map( parseTile ) );
 const TUNNEL_ROW = 14;
 const PACMAN_START = { x: 13, y: 23 };
 const GHOST_STARTS = [
-  { x: 13, y: 14, kind: 'hunter' }, // dentro de la pen
-  { x: 14, y: 14, kind: 'random' }, // dentro de la pen
+  { x: 13, y: 14, kind: 'hunter', corner: { x: 26, y: 1 } },  // dentro de la pen
+  { x: 14, y: 14, kind: 'random', corner: { x: 1,  y: 29 } }, // dentro de la pen
+  { x: 1,  y: 5,  kind: 'patrol', corner: { x: 1,  y: 1 } },  // fuera
+  { x: 26, y: 5,  kind: 'coward', corner: { x: 26, y: 29 } }, // fuera
 ];
+const PATROL_RECT = { x1: 1, y1: 1, x2: 12, y2: 5 };
 
 window.MAZE = MAZE;
 window.TUNNEL_ROW = TUNNEL_ROW;
 window.PACMAN_START = PACMAN_START;
 window.GHOST_STARTS = GHOST_STARTS;
+window.PATROL_RECT = PATROL_RECT;
