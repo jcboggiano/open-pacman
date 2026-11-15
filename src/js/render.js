@@ -160,7 +160,16 @@ function draw( ctx, game, frame ) {
   drawDoor( ctx, grid );
   drawDots( ctx, grid );
   drawPacman( ctx, game.pacman, frame );
-  game.ghosts.forEach( ( g, i ) => drawGhost( ctx, g, GHOST_COLORS[ i ] || '#ff0000' ) );
+  game.ghosts.forEach( ( g, i ) => {
+    if ( g.respawnFrames > 0 ) return; // comido: invisible
+    let color = GHOST_COLORS[ i ] || '#ff0000';
+    if ( g.frightened ) {
+      const flashing = game.frightenedFrames <= FRIGHTENED_FLASH_FRAMES;
+      const white = flashing && Math.floor( game.frightenedFrames / 15 ) % 2 === 0;
+      color = white ? '#fff' : '#2121ff';
+    }
+    drawGhost( ctx, g, color );
+  } );
   drawHUD( ctx, game, W );
 }
 

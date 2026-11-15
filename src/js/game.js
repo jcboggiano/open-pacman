@@ -24,6 +24,7 @@ const CHASE_FRAMES = 1200;
 const POWER_PELLET_POINTS = 50;
 const FRIGHTENED_FRAMES = 360;
 const FRIGHTENED_SPEED = 0.05;  // 1/20 celda/frame, alineado con la rejilla
+const FRIGHTENED_FLASH_FRAMES = 120;
 
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
@@ -323,3 +324,4 @@ function update( game ) {
 window.createGame = createGame;
 window.update = update;
 window.DIRS = DIRS;
+window.FRIGHTENED_FLASH_FRAMES = FRIGHTENED_FLASH_FRAMES;
