@@ -10,8 +10,11 @@ const DIRS = {
 };
 const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
-const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
-const GHOST_SPEED = 0.1;    // 1/10 celda/frame
+const PACMAN_SPEED = 0.125;  // 1/8 celda/frame -> alinea cada 8 frames
+const GHOST_SPEED = 0.1;     // 1/10 celda/frame
+const HUNTER_SPEED = 0.125;  // 1/8 celda/frame, igual que Pac-Man
+const SCATTER_FRAMES = 420;
+const CHASE_FRAMES = 1200;
 
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
@@ -40,9 +43,13 @@ function createGame() {
       x: g.x,
       y: g.y,
       dir: 'up',
-      speed: GHOST_SPEED,
+      speed: g.kind === 'hunter' ? HUNTER_SPEED : GHOST_SPEED,
       kind: g.kind,
+      corner: { x: g.corner.x, y: g.corner.y },
+      patrolIndex: 0,
     } ) ),
+    mode: 'scatter',
+    modeFrames: 0,
   };
 }
 
