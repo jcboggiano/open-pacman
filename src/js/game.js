@@ -182,7 +182,19 @@ function collides( a, b ) {
   return Math.abs( a.x - b.x ) < 0.5 && Math.abs( a.y - b.y ) < 0.5;
 }
 
+function advanceMode( game ) {
+  game.modeFrames++;
+  if ( game.mode === 'scatter' && game.modeFrames >= SCATTER_FRAMES ) {
+    game.mode = 'chase';
+    game.modeFrames = 0;
+  } else if ( game.mode === 'chase' && game.modeFrames >= CHASE_FRAMES ) {
+    game.mode = 'scatter';
+    game.modeFrames = 0;
+  }
+}
+
 function update( game ) {
+  advanceMode( game );
   movePacman( game );
   game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
 
