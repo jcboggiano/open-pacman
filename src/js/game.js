@@ -53,6 +53,7 @@ function createGame() {
       kind: g.kind,
       corner: { x: g.corner.x, y: g.corner.y },
       patrolIndex: 0,
+      leaving: !!g.inPen,
     } ) ),
     mode: 'scatter',
     modeFrames: 0,
@@ -224,6 +225,7 @@ function resetPositions( game ) {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
     g.dir = 'up';
+    g.leaving = !!GHOST_STARTS[ i ].inPen;
   } );
 }
 
